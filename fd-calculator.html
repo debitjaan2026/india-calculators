@@ -1,0 +1,88 @@
+<style>
+.fd-wrap{font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:16px auto;padding:20px;border:1px solid #e2e2e2;border-radius:12px;background:#ffffff;color:#222222;box-sizing:border-box}
+.fd-wrap *{box-sizing:border-box}
+.fd-title{font-size:20px;font-weight:700;margin:0 0 4px}
+.fd-sub{font-size:13px;color:#666666;margin:0 0 16px}
+.fd-field{margin-bottom:12px}
+.fd-field label{display:block;font-size:13px;font-weight:600;margin-bottom:5px}
+.fd-field input,.fd-field select{width:100%;padding:10px;border:1px solid #cccccc;border-radius:8px;font-size:16px;background:#ffffff;color:#222222}
+.fd-results{background:#fdf6ec;border:1px solid #f3dfba;border-radius:10px;padding:14px 16px;margin-top:6px}
+.fd-line{display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:15px}
+.fd-big{font-size:18px;font-weight:700;color:#9a6206}
+.fd-note{font-size:12px;color:#777777;margin:10px 0 0}
+</style>
+<div class="fd-wrap" id="fdCalc">
+  <h3 class="fd-title">FD Calculator</h3>
+  <p class="fd-sub">Find out what your fixed deposit will be worth at maturity, with quarterly compounding — the Indian bank standard.</p>
+  <div class="fd-field">
+    <label for="fd-amount">Deposit amount (₹)</label>
+    <input type="number" id="fd-amount" value="100000" min="0" step="1000" inputmode="decimal">
+  </div>
+  <div class="fd-field">
+    <label for="fd-rate">Interest rate (% per year)</label>
+    <input type="number" id="fd-rate" value="6.5" min="0" step="0.1" inputmode="decimal">
+  </div>
+  <div class="fd-field">
+    <label for="fd-years">Deposit period (years)</label>
+    <input type="number" id="fd-years" value="5" min="0" step="0.5" inputmode="decimal">
+  </div>
+  <div class="fd-field">
+    <label for="fd-freq">Compounding frequency</label>
+    <select id="fd-freq">
+      <option value="4" selected>Quarterly (most Indian banks)</option>
+      <option value="12">Monthly</option>
+      <option value="1">Yearly</option>
+    </select>
+  </div>
+  <div class="fd-results">
+    <div class="fd-line fd-big"><span>Maturity value</span><span id="fd-out-maturity">—</span></div>
+    <div class="fd-line"><span>Interest earned</span><span id="fd-out-interest">—</span></div>
+    <div class="fd-line"><span>Deposit amount</span><span id="fd-out-deposit">—</span></div>
+  </div>
+  <p class="fd-note">Calculated as A = P × (1 + r ÷ (100 × f))<sup>f × t</sup>. Bank FD rates change from time to time — check your bank's current rate before you invest. TDS may apply on FD interest.</p>
+</div>
+<script>
+function fdCompute(P, annualRate, years, freq) {
+  if (P < 0 || years < 0 || !freq || isNaN(P) || isNaN(annualRate) || isNaN(years)) {
+    return { maturity: 0, interest: 0 };
+  }
+  var A = P * Math.pow(1 + annualRate / (100 * freq), freq * years);
+  return { maturity: A, interest: A - P };
+}
+if (typeof document !== 'undefined') {
+  (function () {
+    function fmt(v) {
+      return '₹' + new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(Math.round(v));
+    }
+    var amountEl = document.getElementById('fd-amount');
+    var rateEl = document.getElementById('fd-rate');
+    var yearsEl = document.getElementById('fd-years');
+    var freqEl = document.getElementById('fd-freq');
+    var outMaturity = document.getElementById('fd-out-maturity');
+    var outInterest = document.getElementById('fd-out-interest');
+    var outDeposit = document.getElementById('fd-out-deposit');
+    if (!amountEl || !outMaturity) return;
+    function update() {
+      var P = parseFloat(amountEl.value) || 0;
+      var rate = parseFloat(rateEl.value) || 0;
+      var yrs = parseFloat(yearsEl.value) || 0;
+      var f = parseInt(freqEl.value, 10) || 4;
+      if (P <= 0 || yrs <= 0) {
+        outMaturity.textContent = '—';
+        outInterest.textContent = '—';
+        outDeposit.textContent = '—';
+        return;
+      }
+      var res = fdCompute(P, rate, yrs, f);
+      outMaturity.textContent = fmt(res.maturity);
+      outInterest.textContent = fmt(res.interest);
+      outDeposit.textContent = fmt(P);
+    }
+    [amountEl, rateEl, yearsEl, freqEl].forEach(function (el) {
+      el.addEventListener('input', update);
+      el.addEventListener('change', update);
+    });
+    update();
+  })();
+}
+</script>
