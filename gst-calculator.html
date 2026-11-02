@@ -1,0 +1,111 @@
+<style>
+.gst-wrap{font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:16px auto;padding:20px;border:1px solid #e2e2e2;border-radius:12px;background:#ffffff;color:#222222;box-sizing:border-box}
+.gst-wrap *{box-sizing:border-box}
+.gst-title{font-size:20px;font-weight:700;margin:0 0 4px}
+.gst-sub{font-size:13px;color:#666666;margin:0 0 16px}
+.gst-field{margin-bottom:12px}
+.gst-field label{display:block;font-size:13px;font-weight:600;margin-bottom:5px}
+.gst-field input,.gst-field select{width:100%;padding:10px;border:1px solid #cccccc;border-radius:8px;font-size:16px;background:#ffffff;color:#222222}
+.gst-modes{display:flex;gap:10px;margin-bottom:12px}
+.gst-modes label{flex:1;display:block;text-align:center;padding:10px;border:1px solid #cccccc;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;background:#fafafa}
+.gst-modes input{margin-right:6px}
+.gst-results{background:#f7f2fc;border:1px solid #e0d2f7;border-radius:10px;padding:14px 16px;margin-top:6px}
+.gst-line{display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:15px}
+.gst-big{font-size:18px;font-weight:700;color:#5b2ea6}
+.gst-split{font-size:13px;color:#555555;border-top:1px dashed #cdbcf0;margin-top:6px;padding-top:8px}
+.gst-note{font-size:12px;color:#777777;margin:10px 0 0}
+</style>
+<div class="gst-wrap" id="gstCalc">
+  <h3 class="gst-title">GST Calculator</h3>
+  <p class="gst-sub">Add GST to a price, or remove GST from a total to find the original amount — with the CGST / SGST split.</p>
+  <div class="gst-modes">
+    <label><input type="radio" name="gst-mode" value="add" checked> Add GST</label>
+    <label><input type="radio" name="gst-mode" value="remove"> Remove GST</label>
+  </div>
+  <div class="gst-field">
+    <label for="gst-amount">Amount (₹)</label>
+    <input type="number" id="gst-amount" value="1000" min="0" step="10" inputmode="decimal">
+  </div>
+  <div class="gst-field">
+    <label for="gst-rate">GST rate</label>
+    <select id="gst-rate">
+      <option value="5">5%</option>
+      <option value="12">12%</option>
+      <option value="18" selected>18%</option>
+      <option value="28">28%</option>
+      <option value="custom">Custom rate…</option>
+    </select>
+  </div>
+  <div class="gst-field" id="gst-custom-row" style="display:none">
+    <label for="gst-custom-rate">Custom GST rate (%)</label>
+    <input type="number" id="gst-custom-rate" value="18" min="0" step="0.5" inputmode="decimal">
+  </div>
+  <div class="gst-results">
+    <div class="gst-line"><span>Base amount (before GST)</span><span id="gst-out-base">—</span></div>
+    <div class="gst-line"><span>GST amount</span><span id="gst-out-gst">—</span></div>
+    <div class="gst-line gst-big"><span>Total amount</span><span id="gst-out-total">—</span></div>
+    <div class="gst-line gst-split"><span>of which CGST + SGST</span><span id="gst-out-split">—</span></div>
+  </div>
+  <p class="gst-note">For sales within the same state, GST is split equally into CGST and SGST. For sales to another state, the same total is charged as IGST instead.</p>
+</div>
+<script>
+function gstCompute(amount, rate, mode) {
+  var base, gst, total;
+  amount = Number(amount) || 0;
+  rate = Number(rate) || 0;
+  if (mode === 'remove') {
+    total = amount;
+    base = amount / (1 + rate / 100);
+    gst = total - base;
+  } else {
+    base = amount;
+    gst = amount * rate / 100;
+    total = base + gst;
+  }
+  return { base: base, gst: gst, total: total, cgst: gst / 2, sgst: gst / 2 };
+}
+if (typeof document !== 'undefined') {
+  (function () {
+    function fmt(v) {
+      return '₹' + new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+    }
+    var amountEl = document.getElementById('gst-amount');
+    var rateEl = document.getElementById('gst-rate');
+    var customRow = document.getElementById('gst-custom-row');
+    var customRateEl = document.getElementById('gst-custom-rate');
+    var outBase = document.getElementById('gst-out-base');
+    var outGst = document.getElementById('gst-out-gst');
+    var outTotal = document.getElementById('gst-out-total');
+    var outSplit = document.getElementById('gst-out-split');
+    if (!amountEl || !outBase) return;
+    function currentRate() {
+      if (rateEl.value === 'custom') {
+        customRow.style.display = 'block';
+        return parseFloat(customRateEl.value) || 0;
+      }
+      customRow.style.display = 'none';
+      return parseFloat(rateEl.value) || 0;
+    }
+    function currentMode() {
+      var checked = document.querySelector('input[name="gst-mode"]:checked');
+      return checked ? checked.value : 'add';
+    }
+    function update() {
+      var amount = parseFloat(amountEl.value) || 0;
+      var res = gstCompute(amount, currentRate(), currentMode());
+      outBase.textContent = fmt(res.base);
+      outGst.textContent = fmt(res.gst);
+      outTotal.textContent = fmt(res.total);
+      outSplit.textContent = fmt(res.cgst) + ' + ' + fmt(res.sgst);
+    }
+    [amountEl, rateEl, customRateEl].forEach(function (el) {
+      el.addEventListener('input', update);
+      el.addEventListener('change', update);
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('input[name="gst-mode"]'), function (el) {
+      el.addEventListener('change', update);
+    });
+    update();
+  })();
+}
+</script>
