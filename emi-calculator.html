@@ -1,0 +1,99 @@
+<style>
+.emi-wrap{font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:16px auto;padding:20px;border:1px solid #e2e2e2;border-radius:12px;background:#ffffff;color:#222222;box-sizing:border-box}
+.emi-wrap *{box-sizing:border-box}
+.emi-title{font-size:20px;font-weight:700;margin:0 0 4px}
+.emi-sub{font-size:13px;color:#666666;margin:0 0 16px}
+.emi-field{margin-bottom:12px}
+.emi-field label{display:block;font-size:13px;font-weight:600;margin-bottom:5px}
+.emi-field input,.emi-field select{width:100%;padding:10px;border:1px solid #cccccc;border-radius:8px;font-size:16px;background:#ffffff;color:#222222}
+.emi-row{display:flex;gap:10px}
+.emi-row .emi-field{flex:1}
+.emi-results{background:#f4f8ff;border:1px solid #d7e6ff;border-radius:10px;padding:14px 16px;margin-top:6px}
+.emi-line{display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:15px}
+.emi-big{font-size:18px;font-weight:700;color:#0b57a4}
+.emi-note{font-size:12px;color:#777777;margin:10px 0 0}
+</style>
+<div class="emi-wrap" id="emiCalc">
+  <h3 class="emi-title">EMI Calculator</h3>
+  <p class="emi-sub">Work out your monthly loan EMI in seconds — home loan, car loan or personal loan.</p>
+  <div class="emi-field">
+    <label for="emi-amount">Loan amount (₹)</label>
+    <input type="number" id="emi-amount" value="500000" min="0" step="1000" inputmode="decimal">
+  </div>
+  <div class="emi-field">
+    <label for="emi-rate">Interest rate (% per year)</label>
+    <input type="number" id="emi-rate" value="10" min="0" step="0.1" inputmode="decimal">
+  </div>
+  <div class="emi-row">
+    <div class="emi-field">
+      <label for="emi-tenure">Loan tenure</label>
+      <input type="number" id="emi-tenure" value="5" min="1" step="1" inputmode="numeric">
+    </div>
+    <div class="emi-field">
+      <label for="emi-unit">Tenure in</label>
+      <select id="emi-unit">
+        <option value="years" selected>Years</option>
+        <option value="months">Months</option>
+      </select>
+    </div>
+  </div>
+  <div class="emi-results">
+    <div class="emi-line emi-big"><span>Monthly EMI</span><span id="emi-out-emi">—</span></div>
+    <div class="emi-line"><span>Total interest</span><span id="emi-out-interest">—</span></div>
+    <div class="emi-line"><span>Total payment</span><span id="emi-out-total">—</span></div>
+  </div>
+  <p class="emi-note">EMI = P × r × (1+r)<sup>n</sup> ÷ ((1+r)<sup>n</sup> − 1), where r is the monthly interest rate and n is the number of months. Indicative only — your bank's exact EMI may differ slightly.</p>
+</div>
+<script>
+function emiCompute(P, annualRate, months) {
+  var r = annualRate / 1200;
+  var emi, total;
+  if (months <= 0 || P < 0 || isNaN(P) || isNaN(annualRate) || isNaN(months)) {
+    return { emi: 0, totalPayment: 0, totalInterest: 0 };
+  }
+  if (r === 0) {
+    emi = P / months;
+  } else {
+    var f = Math.pow(1 + r, months);
+    emi = P * r * f / (f - 1);
+  }
+  total = emi * months;
+  return { emi: emi, totalPayment: total, totalInterest: total - P };
+}
+if (typeof document !== 'undefined') {
+  (function () {
+    function fmt(v) {
+      return '₹' + new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(Math.round(v));
+    }
+    var amountEl = document.getElementById('emi-amount');
+    var rateEl = document.getElementById('emi-rate');
+    var tenureEl = document.getElementById('emi-tenure');
+    var unitEl = document.getElementById('emi-unit');
+    var outEmi = document.getElementById('emi-out-emi');
+    var outInterest = document.getElementById('emi-out-interest');
+    var outTotal = document.getElementById('emi-out-total');
+    if (!amountEl || !outEmi) return;
+    function update() {
+      var P = parseFloat(amountEl.value) || 0;
+      var rate = parseFloat(rateEl.value) || 0;
+      var t = parseFloat(tenureEl.value) || 0;
+      var months = unitEl.value === 'months' ? t : t * 12;
+      if (P <= 0 || months <= 0) {
+        outEmi.textContent = '—';
+        outInterest.textContent = '—';
+        outTotal.textContent = '—';
+        return;
+      }
+      var res = emiCompute(P, rate, months);
+      outEmi.textContent = fmt(res.emi);
+      outInterest.textContent = fmt(res.totalInterest);
+      outTotal.textContent = fmt(res.totalPayment);
+    }
+    [amountEl, rateEl, tenureEl, unitEl].forEach(function (el) {
+      el.addEventListener('input', update);
+      el.addEventListener('change', update);
+    });
+    update();
+  })();
+}
+</script>
