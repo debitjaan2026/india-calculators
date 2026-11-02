@@ -1,0 +1,129 @@
+<style>
+.age-wrap{font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:16px auto;padding:20px;border:1px solid #e2e2e2;border-radius:12px;background:#ffffff;color:#222222;box-sizing:border-box}
+.age-wrap *{box-sizing:border-box}
+.age-title{font-size:20px;font-weight:700;margin:0 0 4px}
+.age-sub{font-size:13px;color:#666666;margin:0 0 16px}
+.age-field{margin-bottom:12px}
+.age-field label{display:block;font-size:13px;font-weight:600;margin-bottom:5px}
+.age-field input{width:100%;padding:10px;border:1px solid #cccccc;border-radius:8px;font-size:16px;background:#ffffff;color:#222222}
+.age-results{background:#eefaf7;border:1px solid #c4e8dc;border-radius:10px;padding:14px 16px;margin-top:6px}
+.age-line{display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:15px}
+.age-line span:last-child{text-align:right}
+.age-big{font-size:18px;font-weight:700;color:#0a6e54}
+.age-error{background:#fdecec;border:1px solid #f5bcbc;border-radius:8px;padding:10px 12px;font-size:13px;color:#8a1f1f;margin-top:12px;display:none}
+.age-note{font-size:12px;color:#777777;margin:10px 0 0}
+</style>
+<div class="age-wrap" id="ageCalc">
+  <h3 class="age-title">Age Calculator</h3>
+  <p class="age-sub">Find your exact age in years, months and days — including your age on a future cut-off date, as exam and job forms ask.</p>
+  <div class="age-field">
+    <label for="age-dob">Date of birth</label>
+    <input type="date" id="age-dob" value="2000-01-01">
+  </div>
+  <div class="age-field">
+    <label for="age-on">Age as on</label>
+    <input type="date" id="age-on">
+  </div>
+  <div class="age-results">
+    <div class="age-line age-big"><span>Your age</span><span id="age-out-age">—</span></div>
+    <div class="age-line"><span>Total days lived</span><span id="age-out-days">—</span></div>
+    <div class="age-line"><span>Born on</span><span id="age-out-weekday">—</span></div>
+    <div class="age-line"><span>Next birthday</span><span id="age-out-next">—</span></div>
+  </div>
+  <div class="age-error" id="age-error">Please check the dates — the date of birth must be before the "age as on" date.</div>
+  <p class="age-note">Many exam and government job forms fix eligibility by your age on a cut-off date (for example, "age as on 1 January"). Set that date above to check your eligibility age exactly.</p>
+</div>
+<script>
+function ageParseParts(s) {
+  var p = String(s).split('-');
+  return { y: parseInt(p[0], 10), m: parseInt(p[1], 10), d: parseInt(p[2], 10) };
+}
+function ageCompute(dobStr, onStr) {
+  var b = ageParseParts(dobStr);
+  var o = ageParseParts(onStr);
+  if (!b.y || !b.m || !b.d || !o.y || !o.m || !o.d) return null;
+  var dobUTC = Date.UTC(b.y, b.m - 1, b.d);
+  var onUTC = Date.UTC(o.y, o.m - 1, o.d);
+  if (isNaN(dobUTC) || isNaN(onUTC) || dobUTC > onUTC) return null;
+  var years = o.y - b.y;
+  var months = o.m - b.m;
+  var days = o.d - b.d;
+  if (days < 0) {
+    months--;
+    days += new Date(Date.UTC(o.y, o.m - 1, 0)).getUTCDate();
+  }
+  if (months < 0) {
+    years--;
+    months += 12;
+  }
+  var totalDays = Math.round((onUTC - dobUTC) / 86400000);
+  var weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  var birthWeekday = weekdays[new Date(dobUTC).getUTCDay()];
+  var nbYear = o.y;
+  var nbUTC = Date.UTC(nbYear, b.m - 1, b.d);
+  if (nbUTC < onUTC) {
+    nbYear++;
+    nbUTC = Date.UTC(nbYear, b.m - 1, b.d);
+  }
+  var daysToNext = Math.round((nbUTC - onUTC) / 86400000);
+  return {
+    years: years,
+    months: months,
+    days: days,
+    totalDays: totalDays,
+    birthWeekday: birthWeekday,
+    daysToNextBirthday: daysToNext,
+    nextBirthday: { y: nbYear, m: b.m, d: b.d }
+  };
+}
+if (typeof document !== 'undefined') {
+  (function () {
+    var dobEl = document.getElementById('age-dob');
+    var onEl = document.getElementById('age-on');
+    var outAge = document.getElementById('age-out-age');
+    var outDays = document.getElementById('age-out-days');
+    var outWeekday = document.getElementById('age-out-weekday');
+    var outNext = document.getElementById('age-out-next');
+    var errorEl = document.getElementById('age-error');
+    if (!dobEl || !onEl || !outAge) return;
+    function isoToday() {
+      var t = new Date();
+      var mm = String(t.getMonth() + 1).padStart(2, '0');
+      var dd = String(t.getDate()).padStart(2, '0');
+      return t.getFullYear() + '-' + mm + '-' + dd;
+    }
+    if (!onEl.value) onEl.value = isoToday();
+    function fmtDate(y, m, d) {
+      var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return d + ' ' + months[m - 1] + ' ' + y;
+    }
+    function update() {
+      var res = ageCompute(dobEl.value, onEl.value);
+      if (!res) {
+        errorEl.style.display = 'block';
+        outAge.textContent = '—';
+        outDays.textContent = '—';
+        outWeekday.textContent = '—';
+        outNext.textContent = '—';
+        return;
+      }
+      errorEl.style.display = 'none';
+      outAge.textContent = res.years + ' years, ' + res.months + ' months, ' + res.days + ' days';
+      outDays.textContent = new Intl.NumberFormat('en-IN').format(res.totalDays) + ' days';
+      outWeekday.textContent = res.birthWeekday;
+      if (res.daysToNextBirthday === 0) {
+        outNext.textContent = fmtDate(res.nextBirthday.y, res.nextBirthday.m, res.nextBirthday.d) + ' — today! 🎂';
+      } else if (res.daysToNextBirthday === 1) {
+        outNext.textContent = fmtDate(res.nextBirthday.y, res.nextBirthday.m, res.nextBirthday.d) + ' — tomorrow';
+      } else {
+        outNext.textContent = fmtDate(res.nextBirthday.y, res.nextBirthday.m, res.nextBirthday.d) + ' — in ' + res.daysToNextBirthday + ' days';
+      }
+    }
+    [dobEl, onEl].forEach(function (el) {
+      el.addEventListener('input', update);
+      el.addEventListener('change', update);
+    });
+    update();
+  })();
+}
+</script>
